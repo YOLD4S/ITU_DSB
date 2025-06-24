@@ -1,3 +1,5 @@
+from traceback import print_tb
+
 from requests import get, post, Session
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
@@ -11,6 +13,7 @@ def main():
 
     # Wait until 45 seconds left for the system to open
     start = time_resolver(DATETIME)
+    print(f"Waiting until {start}")
     wait_until(start - timedelta(seconds=45))
     # Prepare variables to avoid unnecessary waiting when the system is open
     jwt = get_jwt(USERNAME, PASSWORD)
@@ -19,6 +22,7 @@ def main():
     wait_until(start - delay)
     response = post_kepler(jwt, CRNS, DROPS)
     print(response.text)
+    print(f"{delay}")
 
 
 # Adding the required auth token, posts the request to take or drop lectures
@@ -54,8 +58,8 @@ def get_jwt(username, password):
     # Logs in
     res_log = session.post(login_url, data=payload)
     # Checks if the user is redirected meaning that the credentials are valid
-    if res_log.history[0].status_code != 302:
-        sys.exit('Please check your login credentials')
+    if not res_log.history:
+        raise SystemExit('Please check your login credentials')
     # Gets the required cookie to get jwt
     cookie_jwt = res_log.history[-1].headers.get('Set-Cookie')
     headers_jwt = {
@@ -69,7 +73,7 @@ def get_jwt(username, password):
 def time_resolver(date_time):
     matches = re.search(r"(\d{2})/(\d{2})/(\d{4}) *(\d{2})\.(\d{2})\.(\d{2})", date_time)
     if not matches:
-        sys.exit('Please check your date and time format')
+        raise SystemExit('Please check your date and time format')
 
     day = int(matches.group(1))
     month = int(matches.group(2))
@@ -85,7 +89,7 @@ def time_resolver(date_time):
         or 0 <= second <= 59:
         pass
     else:
-        sys.exit('Please check your date and time')
+        raise SystemExit('Please check your date and time')
     return datetime(year, month, day, hour, minute, second)
 
 
@@ -103,16 +107,18 @@ def calc_delay():
     if ping(PING_URL):
         latency = ping(PING_URL)
     else:
-        sys.exit("Please check PING_URL or if you don't have a valid URL, change SEND_EARLY to False")
+        raise SystemExit("Please check PING_URL or if you don't have a valid URL, change SEND_EARLY to False")
     for i in range(5):
         temp = ping(PING_URL)
         latency = max(latency, temp)
-    return latency*1000 + 10
+    return timedelta(milliseconds=latency+10)
 
 
 def check_credentials():
     calc_delay()  # To precheck if the url is valid(pingable)
     get_jwt(USERNAME, PASSWORD)
+    if len(CRNS) > 10 or len(DROPS) > 10:
+        raise SystemExit("Max 10 CRN is supported")
 
 
 if __name__ == "__main__":

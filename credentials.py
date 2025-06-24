@@ -11,7 +11,7 @@ DROPS    = []
 
 # Example format: "15/03/2035 15.00.00" which means 15th March 2035, at 3 pm.
 # The program will most likely raise an error if the input is entered in an incorrect format
-DATETIME = ""
+DATETIME = "24/06/2025  16.00.00"
 
 # If you have a stable internet connection, it's recommended to change SEND_EARLY to True and
 # enter a URL which has low latency to ITU servers.
