@@ -110,8 +110,8 @@ def calc_delay():
         raise SystemExit("Please check PING_URL or if you don't have a valid URL, change SEND_EARLY to False")
     for i in range(5):
         temp = ping(PING_URL)
-        latency = max(latency, temp)
-    return timedelta(milliseconds=latency+10)
+        latency = min(latency, temp)
+    return timedelta(milliseconds=latency-5)
 
 
 def check_credentials():
