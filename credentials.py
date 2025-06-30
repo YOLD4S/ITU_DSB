@@ -11,12 +11,14 @@ DROPS    = []
 
 # Example format: "15/03/2035 15.00.00" which means 15th March 2035, at 3 pm.
 # The program will most likely raise an error if the input is entered in an incorrect format
-DATETIME = "24/06/2025  16.00.00"
+DATETIME = ""
 
 # If you have a stable internet connection, it's recommended to change SEND_EARLY to True and
 # enter a URL which has low latency to ITU servers.
 # This way the automation will decide how earlier to send the request
 # Otherwise the duration that the request is sent earlier will be EARLY(in milliseconds)
-EARLY = 0
+EARLY = 20
 PING_URL = ""
 SEND_EARLY = False
+
+TIME_INTERVAL = 3

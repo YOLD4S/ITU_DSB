@@ -1,29 +1,43 @@
-from traceback import print_tb
-
 from requests import get, post, Session
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from ping3 import ping
 from credentials import *
-import re, sys
+import re
 
 
 def main():
     check_credentials()
-
+    courses = course_names_by_crns()
     # Wait until 45 seconds left for the system to open
-    start = time_resolver(DATETIME)
+    start = time_resolver(DATETIME) - calc_delay()
     print(f"Waiting until {start}")
     wait_until(start - timedelta(seconds=45))
     # Prepare variables to avoid unnecessary waiting when the system is open
     jwt = get_jwt(USERNAME, PASSWORD)
-    delay = calc_delay()
 
-    wait_until(start - delay)
-    response = post_kepler(jwt, CRNS, DROPS)
-    print(response.text)
-    print(f"{delay}")
+    if start < datetime.now():
+        start = datetime.now()
+    wait_until(start)
 
+    try_number = 1
+    while True:
+        response = post_kepler(jwt, CRNS, DROPS).json()
+        print(f"🔁Attempt #{try_number}:")
+        try_number += 1
+        # print(response)
+        for course in response['ecrnResultList']:
+            if course['statusCode'] == 0:
+                print(f"    ✅{courses[course['crn']]} was successfully registered.")
+                CRNS.remove(course['crn'])
+            else:
+                print(f"    ❌{courses[course['crn']]} could not be registered.")
+        if len(CRNS) == 0:
+            print("All courses have been successfully registered. Wishing you a great semester!")
+            break
+        start += timedelta(seconds=TIME_INTERVAL)
+        wait_until(start)
+    return
 
 # Adding the required auth token, posts the request to take or drop lectures
 def post_kepler(jwt, crns, drops):
@@ -95,30 +109,49 @@ def time_resolver(date_time):
 
 def wait_until(target_time):
     while True:
-        now = datetime.now()
-        if now >= target_time:
+        if datetime.now() >= target_time:
             break
 
 
 def calc_delay():
-    if not SEND_EARLY:
-        return timedelta(milliseconds=EARLY)
-
-    if ping(PING_URL):
-        latency = ping(PING_URL)
+    if SEND_EARLY:
+        if PING_URL == "":
+            print("You've not entered a valid URL. The request will not be sent earlier.(No need to worry if you don't even understand.")
+            return timedelta(0)
+        elif ping(PING_URL):
+            latency = ping(PING_URL)
+        else:
+            print("The URL is not valid. The request will not be sent earlier.(No need to worry if you don't even understand.")
+            return timedelta(0)
+        for i in range(5):
+            temp = ping(PING_URL)
+            latency = min(latency, temp)
+        return timedelta(milliseconds=latency-5)
     else:
-        raise SystemExit("Please check PING_URL or if you don't have a valid URL, change SEND_EARLY to False")
-    for i in range(5):
-        temp = ping(PING_URL)
-        latency = min(latency, temp)
-    return timedelta(milliseconds=latency-5)
+        return timedelta(0)
 
 
 def check_credentials():
-    calc_delay()  # To precheck if the url is valid(pingable)
     get_jwt(USERNAME, PASSWORD)
     if len(CRNS) > 10 or len(DROPS) > 10:
         raise SystemExit("Max 10 CRN is supported")
+
+
+def course_names_by_crns():
+    response = get('https://obs.itu.edu.tr/public/DersProgram/SearchBransKoduByProgramSeviye?programSeviyeTipiAnahtari=LS')
+    branches = {}
+    for i in response.json():
+        branches[i['bransKoduId']] = i['dersBransKodu']
+    courses = {}
+    for id in branches:
+        html = get('https://obs.itu.edu.tr/public/DersProgram/DersProgramSearch?programSeviyeTipiAnahtari=LS',
+                            params={"dersBransKoduId": id}).text
+        bs = BeautifulSoup(html, 'html.parser')
+        rows = bs.find_all('tr')
+        for row in rows[1:]:
+            cols = row.find_all('td')
+            courses[cols[0].text] = cols[1].text + ' ' + cols[2].text
+    return courses
 
 
 if __name__ == "__main__":
