@@ -1,43 +1,90 @@
+import requests
 from requests import get, post, Session
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from ping3 import ping
 from credentials import *
-import re
+import re, time, random
+
+
+error_messages = {
+    "VAL01": "{} could not be taken. Result code: 'VAL01'",
+    "VAL02": "{} could not be taken. Enrollment Time Hold.  Result code: 'VAL02'",
+    "VAL03": "{} could not be taken again because it was taken this semester.",
+    "VAL04": "{} could not be taken because it was not included in the lesson plan.",
+    "VAL05": "{} cannot be added as maximum number of credits allowed for this term is exceeded.",
+    "VAL06": "{} cannot be added as the enrollment limit has been reached and there is no quota left.",
+    "VAL07": "{} cannot be re-added because this course has been completed before with an AA grade.",
+    "VAL08": "{} could not be taken because your program is not among the programs that can take this course.",
+    "VAL09": "{} cannot be added due to a time conflict with another course.",
+    "VAL10": "No action has been taken because you are not registered to the course {} this semester.",
+    "VAL11": "{} cannot not be added as its prerequisites are not met.",
+    "VAL12": "{} is not offered in the respective semester.",
+    "VAL13": "{} has been temporarily disabled.",
+    "VAL14": "{} could not be taken. System is temporarily disabled.",
+    "VAL15": "You can send maximum 12 CRN parameters.",
+    "VAL16": "You currently have an ongoing transaction, try again later.",
+    "VAL17": "{} could not be taken. Due to maintenance work, the system is temporarily unavailable.",
+    "VAL18": "{} could not be taken. Result code: 'VAL18'",
+    "VAL19": "{}  could not be taken because it is an undergraduate course.",
+}
 
 
 def main():
-    check_credentials()
-    courses = course_names_by_crns()
-    # Wait until 45 seconds left for the system to open
+    session = Session()
+    try:
+        check_credentials()
+    except requests.exceptions.ConnectionError:
+        print("Please check your internet connection.")
+        exit(1)
+    print("Starting...")
+    # courses = course_names_by_crns()
     start = time_resolver(DATETIME) - calc_delay()
-    print(f"Waiting until {start}")
-    wait_until(start - timedelta(seconds=45))
+    if start > datetime.now():
+        print(f"Waiting until {start}")
+
+    # Wait until 1 minute left for the system to open
+    wait_until(start - timedelta(minutes=1))
     # Prepare variables to avoid unnecessary waiting when the system is open
     jwt = get_jwt(USERNAME, PASSWORD)
 
-    if start < datetime.now():
-        start = datetime.now()
     wait_until(start)
 
     try_number = 1
+    retry_number = 1
     while True:
-        response = post_kepler(jwt, CRNS, DROPS).json()
-        print(f"🔁Attempt #{try_number}:")
-        try_number += 1
-        # print(response)
-        for course in response['ecrnResultList']:
-            if course['statusCode'] == 0:
-                print(f"    ✅{courses[course['crn']]} was successfully registered.")
-                CRNS.remove(course['crn'])
-            else:
-                print(f"    ❌{courses[course['crn']]} could not be registered.")
-        if len(CRNS) == 0:
-            print("All courses have been successfully registered. Wishing you a great semester!")
-            break
-        start += timedelta(seconds=TIME_INTERVAL)
-        wait_until(start)
-    return
+        try:
+            response = post_kepler(jwt, CRNS, DROPS).json()
+            print(f"\n🔁 Attempt #{try_number}:")
+            try_number += 1
+            for course in response['ecrnResultList']:
+                if course['statusCode'] == 0:
+                    print(f"  ✅ {course['crn']} was successfully registered.(In attempt #{try_number})")
+                    CRNS.remove(course['crn'])
+                else:
+                    print("  ❌ " + error_messages[course['resultCode']].format(
+                        course['crn'] + " with CRN: " + course['crn']))
+                    if course['resultCode'] in {'VAL15', 'VAL16'}:
+                        break
+
+            if len(CRNS) == 0:
+                print("\n  ☑️ All courses have been successfully registered. Wishing you a great semester!")
+                return
+            time.sleep(TIME_INTERVAL)
+        except KeyboardInterrupt:
+            print("Program terminated.")
+            exit(0)
+        except requests.exceptions.ConnectionError:
+            try:
+                jwt = get_jwt(USERNAME, PASSWORD)
+            except:
+                for i in range(5):
+                    print(
+                        f"\r- Failed to get jwt. Please check your network connection. Retrying in {5 - i} seconds...(Attempt #{retry_number})",
+                        end="")
+                    time.sleep(1)
+                retry_number += 1
+
 
 # Adding the required auth token, posts the request to take or drop lectures
 def post_kepler(jwt, crns, drops):
@@ -49,9 +96,8 @@ def post_kepler(jwt, crns, drops):
 # Logs in with username and password, returns jwt token
 def get_jwt(username, password):
     session = Session()
-
     # Finds the required url after some redirects
-    response = session.get('https://obs.itu.edu.tr') # For hidden inputs
+    response = session.get('https://obs.itu.edu.tr', timeout=2)  # For hidden inputs
     login_url = response.url
 
     # Finds hidden inputs and adds them into the payload for login
@@ -80,7 +126,8 @@ def get_jwt(username, password):
         'Cookie': cookie_jwt
     }
     # Gets jwt
-    jwt = session.get('https://obs.itu.edu.tr/ogrenci/auth/jwt', headers=headers_jwt).text
+    jwt = get('https://obs.itu.edu.tr/ogrenci/auth/jwt', headers=headers_jwt).text
+    session.get('https://girisv3.itu.edu.tr/logout.aspx')
     return jwt
 
 
@@ -96,11 +143,11 @@ def time_resolver(date_time):
     minute = int(matches.group(5))
     second = int(matches.group(6))
 
-    if 0 <= day <= 30\
-        or 0 <= month <= 12\
-        or 0 <= hour <= 24\
-        or 0 <= minute <= 59\
-        or 0 <= second <= 59:
+    if 0 <= day <= 30 \
+            or 0 <= month <= 12 \
+            or 0 <= hour <= 24 \
+            or 0 <= minute <= 59 \
+            or 0 <= second <= 59:
         pass
     else:
         raise SystemExit('Please check your date and time')
@@ -116,36 +163,42 @@ def wait_until(target_time):
 def calc_delay():
     if SEND_EARLY:
         if PING_URL == "":
-            print("You've not entered a valid URL. The request will not be sent earlier.(No need to worry if you don't even understand.")
-            return timedelta(0)
+            print(
+                "You've not entered a valid URL. The request will not be sent earlier.(No need to worry if you don't even understand.")
+            return timedelta(EARLY)
         elif ping(PING_URL):
             latency = ping(PING_URL)
         else:
-            print("The URL is not valid. The request will not be sent earlier.(No need to worry if you don't even understand.")
-            return timedelta(0)
+            print(
+                "The URL is not valid. The request will not be sent earlier.(No need to worry if you don't even understand.")
+            return timedelta(EARLY)
         for i in range(5):
             temp = ping(PING_URL)
-            latency = min(latency, temp)
-        return timedelta(milliseconds=latency-5)
+            if abs(latency - temp) > 5:
+                print(
+                    "Your network is not stable. The request will not be sent earlier.(No need to worry if you don't even understand.")
+            else:
+                latency = min(latency, temp)
+        return timedelta(milliseconds=latency - 5)
     else:
         return timedelta(0)
 
 
 def check_credentials():
+    temp_session = Session()
     get_jwt(USERNAME, PASSWORD)
-    if len(CRNS) > 10 or len(DROPS) > 10:
-        raise SystemExit("Max 10 CRN is supported")
 
 
 def course_names_by_crns():
-    response = get('https://obs.itu.edu.tr/public/DersProgram/SearchBransKoduByProgramSeviye?programSeviyeTipiAnahtari=LS')
+    response = get(
+        'https://obs.itu.edu.tr/public/DersProgram/SearchBransKoduByProgramSeviye?programSeviyeTipiAnahtari=LS')
     branches = {}
     for i in response.json():
         branches[i['bransKoduId']] = i['dersBransKodu']
     courses = {}
     for id in branches:
         html = get('https://obs.itu.edu.tr/public/DersProgram/DersProgramSearch?programSeviyeTipiAnahtari=LS',
-                            params={"dersBransKoduId": id}).text
+                   params={"dersBransKoduId": id}).text
         bs = BeautifulSoup(html, 'html.parser')
         rows = bs.find_all('tr')
         for row in rows[1:]:
