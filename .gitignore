@@ -1,4 +1,4 @@
 /.idea
 .DS_Store
-playground.py
+root/playground.py
 /__pycache__

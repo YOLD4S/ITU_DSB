@@ -3,13 +3,13 @@ from requests import get, post, Session
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from ping3 import ping
-from credentials import *
-import re, time, random
+from root.credentials import *
+import re, time
 
 
 error_messages = {
     "VAL01": "{} could not be taken. Result code: 'VAL01'",
-    "VAL02": "{} could not be taken. Enrollment Time Hold.  Result code: 'VAL02'",
+    "VAL02": "{} could not be taken. You are not in an active course enrollment period.",
     "VAL03": "{} could not be taken again because it was taken this semester.",
     "VAL04": "{} could not be taken because it was not included in the lesson plan.",
     "VAL05": "{} cannot be added as maximum number of credits allowed for this term is exceeded.",
@@ -38,7 +38,7 @@ def main():
         print("Please check your internet connection.")
         exit(1)
     print("Starting...")
-    # courses = course_names_by_crns()
+    courses = course_names_by_crns()
     start = time_resolver(DATETIME) - calc_delay()
     if start > datetime.now():
         print(f"Waiting until {start}")
@@ -48,11 +48,13 @@ def main():
     # Prepare variables to avoid unnecessary waiting when the system is open
     jwt = get_jwt(USERNAME, PASSWORD)
 
-    wait_until(start)
 
     try_number = 1
     retry_number = 1
     while True:
+        if start < datetime.now():
+            start = datetime.now()
+        wait_until(start)
         try:
             response = post_kepler(jwt, CRNS, DROPS).json()
             print(f"\n🔁 Attempt #{try_number}:")
@@ -63,14 +65,14 @@ def main():
                     CRNS.remove(course['crn'])
                 else:
                     print("  ❌ " + error_messages[course['resultCode']].format(
-                        course['crn'] + " with CRN: " + course['crn']))
+                        courses[course['crn']] + " with CRN: " + course['crn']))
                     if course['resultCode'] in {'VAL15', 'VAL16'}:
                         break
-
             if len(CRNS) == 0:
                 print("\n  ☑️ All courses have been successfully registered. Wishing you a great semester!")
                 return
-            time.sleep(TIME_INTERVAL)
+            # time.sleep(TIME_INTERVAL)
+            start += timedelta(seconds=TIME_INTERVAL)
         except KeyboardInterrupt:
             print("Program terminated.")
             exit(0)
@@ -143,7 +145,7 @@ def time_resolver(date_time):
     minute = int(matches.group(5))
     second = int(matches.group(6))
 
-    if 0 <= day <= 30 \
+    if 0 <= day <= 31 \
             or 0 <= month <= 12 \
             or 0 <= hour <= 24 \
             or 0 <= minute <= 59 \
