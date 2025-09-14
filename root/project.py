@@ -3,7 +3,7 @@ from requests import get, post, Session
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from ping3 import ping
-from root.credentials import *
+from credentials import *
 import re, time
 
 
