@@ -1,10 +1,8 @@
-import requests
-from requests import get, post, Session
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from ping3 import ping
 from credentials import *
-import re, time
+import re, time, requests, tls_client
 
 
 error_messages = {
@@ -31,14 +29,13 @@ error_messages = {
 
 
 def main():
-    session = Session()
-    try:
-        check_credentials()
-    except requests.exceptions.ConnectionError:
-        print("Please check your internet connection.")
-        exit(1)
+    session = tls_client.Session()
+    print("Checking username and password...")
+    print("Verified successfully." if check_credentials() else "Please check your credentials.")
+
     print("Starting...")
     courses = course_names_by_crns()
+
     start = time_resolver(DATETIME) - calc_delay()
     if start > datetime.now():
         print(f"Waiting until {start}")
@@ -51,11 +48,8 @@ def main():
     try_number = 1
     retry_number = 1
     while True:
-        if start < datetime.now():
-            start = datetime.now()
-        wait_until(start)
         try:
-            response = post_kepler(jwt, CRNS, DROPS).json()
+            response = post_kepler(session, jwt, CRNS, DROPS).json()
             print(f"\n🔁 Attempt #{try_number}:")
             try_number += 1
             for course in response["ecrnResultList"]:
@@ -78,12 +72,11 @@ def main():
                     "\n  ☑️ All courses have been successfully registered. Wishing you a great semester!"
                 )
                 return
-            # time.sleep(TIME_INTERVAL)
-            start += timedelta(seconds=TIME_INTERVAL)
+            time.sleep(TIME_INTERVAL)
         except KeyboardInterrupt:
             print("Program terminated.")
             exit(0)
-        except requests.exceptions.ConnectionError:
+        except:
             try:
                 jwt = get_jwt(USERNAME, PASSWORD)
             except:
@@ -97,18 +90,18 @@ def main():
 
 
 # Adding the required auth token, posts the request to take or drop lectures
-def post_kepler(jwt, crns, drops):
-    response = post(
+def post_kepler(session, jwt, crns, drops):
+    response = session.post(
         URL_POST,
         headers={"Authorization": "Bearer {}".format(jwt)},
-        json={"ECRN": crns, "SCRN": drops},
+        json={"ECRN": crns, "SCRN": drops}
     )
     return response
 
 
 # Logs in with username and password, returns jwt token
 def get_jwt(username, password):
-    session = Session()
+    session = requests.Session()
     # Finds the required url after some redirects
     response = session.get("https://obs.itu.edu.tr", timeout=2)  # For hidden inputs
     login_url = response.url
@@ -137,7 +130,7 @@ def get_jwt(username, password):
     cookie_jwt = res_log.history[-1].headers.get("Set-Cookie")
     headers_jwt = {"Cookie": cookie_jwt}
     # Gets jwt
-    jwt = get("https://obs.itu.edu.tr/ogrenci/auth/jwt", headers=headers_jwt).text
+    jwt = requests.get("https://obs.itu.edu.tr/ogrenci/auth/jwt", headers=headers_jwt).text
     session.get("https://girisv3.itu.edu.tr/logout.aspx")
     return jwt
 
@@ -203,12 +196,15 @@ def calc_delay():
 
 
 def check_credentials():
-    temp_session = Session()
-    get_jwt(USERNAME, PASSWORD)
+    try:
+        get_jwt(USERNAME, PASSWORD)
+        return True
+    except:
+        return False
 
 
 def course_names_by_crns():
-    response = get(
+    response = requests.get(
         "https://obs.itu.edu.tr/public/DersProgram/SearchBransKoduByProgramSeviye?programSeviyeTipiAnahtari=LS"
     )
     branches = {}
@@ -216,7 +212,7 @@ def course_names_by_crns():
         branches[i["bransKoduId"]] = i["dersBransKodu"]
     courses = {}
     for id in branches:
-        html = get(
+        html = requests.get(
             "https://obs.itu.edu.tr/public/DersProgram/DersProgramSearch?programSeviyeTipiAnahtari=LS",
             params={"dersBransKoduId": id},
         ).text
