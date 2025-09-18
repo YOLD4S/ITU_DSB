@@ -1,4 +1,4 @@
-tls-client
+curl-cffi
 requests
 beautifulsoup4
 ping3

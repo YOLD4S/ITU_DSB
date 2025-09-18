@@ -2,37 +2,12 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from ping3 import ping
 from credentials import *
-import re, time, requests, tls_client
-
-
-error_messages = {
-    "VAL01": "{} could not be taken. Result code: 'VAL01'",
-    "VAL02": "{} could not be taken. You are not in an active course enrollment period.",
-    "VAL03": "{} could not be taken again because it was taken this semester.",
-    "VAL04": "{} could not be taken because it was not included in the lesson plan.",
-    "VAL05": "{} cannot be added as maximum number of credits allowed for this term is exceeded.",
-    "VAL06": "{} cannot be added as the enrollment limit has been reached and there is no quota left.",
-    "VAL07": "{} cannot be re-added because this course has been completed before with an AA grade.",
-    "VAL08": "{} could not be taken because your program is not among the programs that can take this course.",
-    "VAL09": "{} cannot be added due to a time conflict with another course.",
-    "VAL10": "No action has been taken because you are not registered to the course {} this semester.",
-    "VAL11": "{} cannot not be added as its prerequisites are not met.",
-    "VAL12": "{} is not offered in the respective semester.",
-    "VAL13": "{} has been temporarily disabled.",
-    "VAL14": "{} could not be taken. System is temporarily disabled.",
-    "VAL15": "You can send maximum 12 CRN parameters.",
-    "VAL16": "You currently have an ongoing transaction, try again later.",
-    "VAL17": "{} could not be taken. Due to maintenance work, the system is temporarily unavailable.",
-    "VAL18": "{} could not be taken. Result code: 'VAL18'",
-    "VAL19": "{}  could not be taken because it is an undergraduate course.",
-}
+import re, time, requests, curl_cffi
 
 
 def main():
-    session = tls_client.Session()
     print("Checking username and password...")
     print("Verified successfully." if check_credentials() else "Please check your credentials.")
-
     print("Starting...")
     courses = course_names_by_crns()
 
@@ -49,7 +24,8 @@ def main():
     retry_number = 1
     while True:
         try:
-            response = post_kepler(session, jwt, CRNS, DROPS).json()
+            r = post_kepler(jwt, CRNS, DROPS)
+            response = r.json()
             print(f"\n🔁 Attempt #{try_number}:")
             try_number += 1
             for course in response["ecrnResultList"]:
@@ -65,6 +41,7 @@ def main():
                             courses[course["crn"]] + " with CRN: " + course["crn"]
                         )
                     )
+                    # print(r.text)
                     if course["resultCode"] in {"VAL15", "VAL16"}:
                         break
             if len(CRNS) == 0:
@@ -76,7 +53,7 @@ def main():
         except KeyboardInterrupt:
             print("Program terminated.")
             exit(0)
-        except:
+        except requests.exceptions.ConnectionError:
             try:
                 jwt = get_jwt(USERNAME, PASSWORD)
             except:
@@ -87,11 +64,12 @@ def main():
                     )
                     time.sleep(1)
                 retry_number += 1
+        time.sleep(TIME_INTERVAL)
 
 
 # Adding the required auth token, posts the request to take or drop lectures
-def post_kepler(session, jwt, crns, drops):
-    response = session.post(
+def post_kepler(jwt, crns, drops):
+    response = curl_cffi.post(
         URL_POST,
         headers={"Authorization": "Bearer {}".format(jwt)},
         json={"ECRN": crns, "SCRN": drops}
@@ -222,6 +200,29 @@ def course_names_by_crns():
             cols = row.find_all("td")
             courses[cols[0].text] = cols[1].text + " " + cols[2].text
     return courses
+
+
+error_messages = {
+    "VAL01": "{} could not be taken. Result code: 'VAL01'",
+    "VAL02": "{} could not be taken. You are not in an active course enrollment period.",
+    "VAL03": "{} could not be taken again because it was taken this semester.",
+    "VAL04": "{} could not be taken because it was not included in the lesson plan.",
+    "VAL05": "{} cannot be added as maximum number of credits allowed for this term is exceeded.",
+    "VAL06": "{} cannot be added as the enrollment limit has been reached and there is no quota left.",
+    "VAL07": "{} cannot be re-added because this course has been completed before with an AA grade.",
+    "VAL08": "{} could not be taken because your program is not among the programs that can take this course.",
+    "VAL09": "{} cannot be added due to a time conflict with another course.",
+    "VAL10": "No action has been taken because you are not registered to the course {} this semester.",
+    "VAL11": "{} cannot not be added as its prerequisites are not met.",
+    "VAL12": "{} is not offered in the respective semester.",
+    "VAL13": "{} has been temporarily disabled.",
+    "VAL14": "{} could not be taken. System is temporarily disabled.",
+    "VAL15": "You can send maximum 12 CRN parameters.",
+    "VAL16": "You currently have an ongoing transaction, try again later.",
+    "VAL17": "{} could not be taken. Due to maintenance work, the system is temporarily unavailable.",
+    "VAL18": "{} could not be taken. Result code: 'VAL18'",
+    "VAL19": "{}  could not be taken because it is an undergraduate course.",
+}
 
 
 if __name__ == "__main__":
