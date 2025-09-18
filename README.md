@@ -9,6 +9,7 @@ Technologies Used
 -----------------
 - Python
   - requests – For handling HTTP(S) requests
+  - tls_client - For the requests that necessitate a better browser simulation.
   - BeautifulSoup – For parsing HTML during login and course name scraping
   - datetime – For precise timing and delay handling
   - ping3 – For latency-based request optimization
