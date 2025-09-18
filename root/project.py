@@ -19,6 +19,7 @@ def main():
     wait_until(start - timedelta(minutes=1))
     # Prepare variables to avoid unnecessary waiting when the system is open
     jwt = get_jwt(USERNAME, PASSWORD)
+    wait_until(start)
 
     try_number = 1
     retry_number = 1
