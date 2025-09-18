@@ -49,7 +49,6 @@ def main():
                     "\n  ☑️ All courses have been successfully registered. Wishing you a great semester!"
                 )
                 return
-            time.sleep(TIME_INTERVAL)
         except KeyboardInterrupt:
             print("Program terminated.")
             exit(0)
