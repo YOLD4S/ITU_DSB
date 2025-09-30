@@ -6,3 +6,4 @@ root/__pycache__/credentials.cpython-312.pyc
 *.pyc
 *.pyc
 *.pyc
+/root/__pycache__

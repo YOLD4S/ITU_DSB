@@ -8,12 +8,15 @@ import re, time, requests, curl_cffi
 def main():
     print("Checking username and password...")
     print("Verified successfully." if check_credentials() else "Please check your credentials.")
+    print(USERNAME)
     print("Starting...")
     courses = course_names_by_crns()
 
     start = time_resolver(DATETIME) - calc_delay()
     if start > datetime.now():
-        print(f"Waiting until {start}")
+        print(f"Waiting until {start} to take:")
+        for i in CRNS:
+            print(f"{courses[i]} with CRN: {i}")
 
     # Wait until 1 minute left for the system to open
     wait_until(start - timedelta(minutes=1))
@@ -23,7 +26,8 @@ def main():
 
     try_number = 1
     retry_number = 1
-    while True:
+    t = TRIAL_COUNT
+    for i in range(t):
         try:
             r = post_kepler(jwt, CRNS, DROPS)
             response = r.json()
@@ -65,6 +69,8 @@ def main():
                     time.sleep(1)
                 retry_number += 1
         time.sleep(TIME_INTERVAL)
+    print("\nProgram terminated.")
+    exit(0)
 
 
 # Adding the required auth token, posts the request to take or drop lectures
