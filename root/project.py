@@ -10,6 +10,11 @@ def main():
     print("Verified successfully." if check_credentials() else "Please check your credentials.")
     print(USERNAME)
     print("Starting...")
+    if not CRNS:
+        print("CRN list is empty. Looking for the draft courses.")
+        jwt = get_jwt(USERNAME, PASSWORD)
+        CRNS.extend(get_crns_from_draft(jwt))
+
     courses = course_names_by_crns()
 
     start = time_resolver(DATETIME) - calc_delay()
@@ -206,6 +211,17 @@ def course_names_by_crns():
             cols = row.find_all("td")
             courses[cols[0].text] = cols[1].text + " " + cols[2].text
     return courses
+
+def get_crns_from_draft(jwt):
+    response = curl_cffi.get("https://obs.itu.edu.tr/api/ogrenci/DonemListesi/",
+                             headers={"Authorization": "Bearer {}".format(jwt)})
+    data = response.json()
+    if data["statusCode"] != 0:
+        raise ConnectionError
+    donem_id, donem_code = (_son_donem := data["ogrenciDonemListesi"][-1])["akademikDonemId"], _son_donem["donemKodu"]
+    response2 = curl_cffi.get(f"https://obs.itu.edu.tr/api/ogrenci/DersKayitTaslak/TaslakBilgisi/{donem_code}",
+                              headers={"Authorization": "Bearer {}".format(jwt)})
+    return [sinif['crn'] for sinif in response2.json()["taslakBilgi"]["taslakSinifListesi"]]
 
 
 error_messages = {
