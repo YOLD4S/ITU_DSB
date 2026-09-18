@@ -1,9 +1,6 @@
-/.idea
+.idea
 .DS_Store
 root/playground.py
-/__pycache__
-root/__pycache__/credentials.cpython-312.pyc
+__pycache__
 *.pyc
-*.pyc
-*.pyc
-/root/__pycache__
+root/credentials.py
