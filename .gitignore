@@ -4,3 +4,4 @@ root/playground.py
 __pycache__
 *.pyc
 root/credentials.py
+log-*.txt

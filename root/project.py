@@ -3,6 +3,27 @@ from datetime import datetime, timedelta
 from ping3 import ping
 from credentials import *
 import re, time, requests, curl_cffi
+import io, sys
+
+class DubleWrite(io.StringIO):
+    def __init__(self, filename, initial_value = "", newline = "\n"):
+        self.file = open(filename, 'w')
+        self.stdout = sys.stdout
+        super().__init__(initial_value, newline)
+
+    def write(self, text):
+        self.file.write(text)
+        self.stdout.write(text)
+
+    def flush(self):
+        self.file.flush()
+        self.stdout.flush()
+
+    def close(self):
+        self.file.close()
+        self.stdout.close()
+
+sys.stdout = DubleWrite(f'log-{datetime.now()}.txt')
 
 
 def main():
