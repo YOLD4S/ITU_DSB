@@ -23,7 +23,7 @@ class DubleWrite(io.StringIO):
         self.file.close()
         self.stdout.close()
 
-logfile = open(f'log-{datetime.now()}.txt', 'w')
+logfile = open(f'log-{datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.txt', 'w')
 sys.stdout = DubleWrite(logfile, sys.stdout)
 sys.stderr = DubleWrite(logfile, sys.stderr)
 
