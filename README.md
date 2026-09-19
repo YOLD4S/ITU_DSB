@@ -32,16 +32,21 @@ Features
 Installation
 ------------
 Make sure you have Python installed on your system
-Option 1: Clone the repository
-    git clone https://github.com/YOLD4S/ITU_DSB.git
-    cd ITU_DSB
-    pip install -r requirements.txt
 
-Option 2: Manual Installation
-    Download the zip file from this link: https://github.com/YOLD4S/ITU_DSB/archive/refs/heads/main.zip
-    Install it manually without changing the structure
-    Install the required modules by running this in your terminal:
-      pip install -r requirements.txt
+#### Option 1: Clone the repository
+```bash
+git clone https://github.com/YOLD4S/ITU_DSB.git
+cd ITU_DSB
+pip install -r requirements.txt
+```
+
+#### Option 2: Manual Installation
+    
+Download the zip file from this link: https://github.com/YOLD4S/ITU_DSB/archive/refs/heads/main.zip
+
+Install it manually without changing the structure
+
+Install the required modules by running this in your terminal: `pip install -r requirements.txt`
 
 *Note: Standard Python libraries such as datetime, re, and time are already built-in.*
 
@@ -49,6 +54,7 @@ Configuration
 -------------
 Edit the file `root/credentials.py` with your personalized data:
 
+```py
 USERNAME = "your_obs_username"
 PASSWORD = "your_obs_password"
 CRNS = ["12345", "23456"]        # CRNs of the courses to register
@@ -59,20 +65,25 @@ TIME_INTERVAL = 3                # Time between each retry
 SEND_EARLY = True                # Whether to send early based on ping
 EARLY = 0.8                      # Offset in seconds if SEND_EARLY is True
 PING_URL = "obs.itu.edu.tr"      # Used for latency measurement. If can't take response latency will be assumed to be 0. Yo can give another ip from Istanbul.
+```
 
 Running
 -------
 To run the bot, simply execute:
-
-    python project.py
+```bash
+python project.py
+```
 
 If a course is successfully registered:
-
+```bash
     ✅ The course BLG223 Data Structures(Example) was successfully registered. (In attempt #3)
+```
 
 If there’s an error:
-
+```bash
     ❌ MAT101E Mathematics I with CRN: 12345 could not be taken. <Failure explanation>'
+```
+
 
 Notes & Limitations
 -------------------
