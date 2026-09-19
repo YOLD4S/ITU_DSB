@@ -3,6 +3,29 @@ from datetime import datetime, timedelta
 from ping3 import ping
 from credentials import *
 import re, time, requests, curl_cffi
+import io, sys
+
+class DubleWrite(io.StringIO):
+    def __init__(self, file: io.TextIOWrapper, screen: io.TextIOWrapper, initial_value = "", newline = "\n"):
+        self.file = file
+        self.stdout = screen
+        super().__init__(initial_value, newline)
+
+    def write(self, text):
+        self.file.write(text)
+        self.stdout.write(text)
+
+    def flush(self):
+        self.file.flush()
+        self.stdout.flush()
+
+    def close(self):
+        self.file.close()
+        self.stdout.close()
+
+logfile = open(f'log-{datetime.now()}.txt', 'w')
+sys.stdout = DubleWrite(logfile, sys.stdout)
+sys.stderr = DubleWrite(logfile, sys.stderr)
 
 
 def main():
@@ -248,4 +271,8 @@ error_messages = {
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        print(f"If the program failed you can share {logfile.name!r} file with code authors.")
+        print("Note: the log file may contain sensitive information. Be careful with what you share.")
