@@ -6,9 +6,9 @@ import re, time, requests, curl_cffi
 import io, sys
 
 class DubleWrite(io.StringIO):
-    def __init__(self, filename, initial_value = "", newline = "\n"):
-        self.file = open(filename, 'w')
-        self.stdout = sys.stdout
+    def __init__(self, file: io.TextIOWrapper, screen: io.TextIOWrapper, initial_value = "", newline = "\n"):
+        self.file = file
+        self.stdout = screen
         super().__init__(initial_value, newline)
 
     def write(self, text):
@@ -23,7 +23,9 @@ class DubleWrite(io.StringIO):
         self.file.close()
         self.stdout.close()
 
-sys.stdout = DubleWrite(f'log-{datetime.now()}.txt')
+logfile = open(f'log-{datetime.now()}.txt', 'w')
+sys.stdout = DubleWrite(logfile, sys.stdout)
+sys.stderr = DubleWrite(logfile, sys.stderr)
 
 
 def main():
@@ -269,4 +271,8 @@ error_messages = {
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        print(f"If the program failed you can share {logfile.name!r} file with code authors.")
+        print("Note: the log file may contain sensitive information. Be careful with what you share.")
