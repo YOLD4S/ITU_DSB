@@ -2,8 +2,8 @@
 URL_POST = 'https://obs.itu.edu.tr/api/ders-kayit/v21'
 
 # Your login credentials to kepler.itu
-USERNAME = ''
-PASSWORD = ''
+USERNAME = 'karam24'
+PASSWORD = 'K@ram-ITU:24'
 
 # Example: ['12345','34563','90075','123132'] (Maximum 10 crn)
 CRNS     = []
@@ -11,7 +11,7 @@ DROPS    = []
 
 # Example format: "15/03/2035 15.00.00" which means 15th March 2035, at 3 pm.
 # The program will most likely raise an error if the input is entered in an incorrect format
-DATETIME = ""
+DATETIME = "15/03/2035 15.00.00"
 
 # If you have a stable internet connection, it's recommended to change SEND_EARLY to True and
 # enter a URL which has low latency to ITU servers.

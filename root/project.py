@@ -119,7 +119,7 @@ def get_jwt(username, password):
     login_url = response.url
 
     # Finds hidden inputs and adds them into the payload for login
-    soup_login = BeautifulSoup(response.text, "html.parser")
+    soup_login = BeautifulSoup(response.text, "lxml")
     login_tokens = soup_login.find_all("input")
 
     payload = {}
@@ -228,7 +228,7 @@ def course_names_by_crns():
             "https://obs.itu.edu.tr/public/DersProgram/DersProgramSearch?programSeviyeTipiAnahtari=LS",
             params={"dersBransKoduId": id},
         ).text
-        bs = BeautifulSoup(html, "html.parser")
+        bs = BeautifulSoup(html, "lxml")
         rows = bs.find_all("tr")
         for row in rows[1:]:
             cols = row.find_all("td")

@@ -2,3 +2,4 @@ curl-cffi
 requests
 beautifulsoup4
 ping3
+lxml
