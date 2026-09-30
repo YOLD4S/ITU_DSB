@@ -52,13 +52,13 @@ Install the required modules by running this in your terminal: `pip install -r r
 
 Configuration
 -------------
-Edit the file `root/credentials.py` with your personalized data:
+Rename `.env.example` to `.env` and edit it with your personalized data:
 
 ```py
 USERNAME = "your_obs_username"
 PASSWORD = "your_obs_password"
-CRNS = ["12345", "23456"]        # CRNs of the courses to register
-DROPS = []                       # CRNs of courses to drop (optional)
+CRNS = "12345, 23456"        # CRNs of the courses to register
+DROPS = ""                       # CRNs of courses to drop (optional)
 URL_POST = "https://obs.itu.edu.tr/ogrenci/ogrsis/ders-kayit"
 DATETIME = "17/06/2025 09.00.00" # Format: DD/MM/YYYY HH.MM.SS
 TIME_INTERVAL = 3                # Time between each retry
