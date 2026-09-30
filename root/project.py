@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from ping3 import ping
 from credentials import *
-import re, time, requests, curl_cffi
+import re, time, curl_cffi
 import io, sys
 
 class DubleWrite(io.StringIO):
@@ -85,7 +85,7 @@ def main():
         except KeyboardInterrupt:
             print("Program terminated.")
             exit(0)
-        except requests.exceptions.ConnectionError:
+        except curl_cffi.exceptions.ConnectionError:
             try:
                 jwt = get_jwt(USERNAME, PASSWORD)
             except:
@@ -113,7 +113,7 @@ def post_kepler(jwt, crns, drops):
 
 # Logs in with username and password, returns jwt token
 def get_jwt(username, password):
-    session = requests.Session()
+    session = curl_cffi.Session()
     # Finds the required url after some redirects
     response = session.get("https://obs.itu.edu.tr", timeout=2)  # For hidden inputs
     login_url = response.url
@@ -142,7 +142,7 @@ def get_jwt(username, password):
     cookie_jwt = res_log.history[-1].headers.get("Set-Cookie")
     headers_jwt = {"Cookie": cookie_jwt}
     # Gets jwt
-    jwt = requests.get("https://obs.itu.edu.tr/ogrenci/auth/jwt", headers=headers_jwt).text
+    jwt = curl_cffi.get("https://obs.itu.edu.tr/ogrenci/auth/jwt", headers=headers_jwt).text
     session.get("https://girisv3.itu.edu.tr/logout.aspx")
     return jwt
 
@@ -216,7 +216,7 @@ def check_credentials():
 
 
 def course_names_by_crns():
-    response = requests.get(
+    response = curl_cffi.get(
         "https://obs.itu.edu.tr/public/DersProgram/SearchBransKoduByProgramSeviye?programSeviyeTipiAnahtari=LS"
     )
     branches = {}
@@ -224,7 +224,7 @@ def course_names_by_crns():
         branches[i["bransKoduId"]] = i["dersBransKodu"]
     courses = {}
     for id in branches:
-        html = requests.get(
+        html = curl_cffi.get(
             "https://obs.itu.edu.tr/public/DersProgram/DersProgramSearch?programSeviyeTipiAnahtari=LS",
             params={"dersBransKoduId": id},
         ).text
